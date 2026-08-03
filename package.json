@@ -1,0 +1,28 @@
+{
+  "name": "new-music-walk-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/lib/timeline-join/join-timeline.test.mts"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.2.10",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@10.12.1"
+}
