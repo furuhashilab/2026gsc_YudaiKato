@@ -528,5 +528,3 @@ pnpm build
 
 本研究および本リポジトリのコンテンツは、原則としてCC BY 4.0で公開する。
 
-© Furuhashi Laboratory / 面対 高菜, CC BY 4.0
-
