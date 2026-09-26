@@ -724,6 +724,14 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 | `/dev/timeline-join-test` | Scrobbleと位置ログの時刻結合検証 |
 | `/auth` | Supabase Authによるサインアップ・サインイン |
 
+各検証ページの詳しい手順は`docs/`配下に記載している。
+
+| ドキュメント | 内容 |
+| --- | --- |
+| [docs/lastfm-validation.md](docs/lastfm-validation.md) | Last.fm視聴履歴検証の準備・手順 |
+| [docs/location-validation.md](docs/location-validation.md) | スマートフォン位置情報・バックグラウンド挙動の検証手順 |
+| [docs/timeline-join-validation.md](docs/timeline-join-validation.md) | Scrobble・位置ログ結合ロジックの検証手順と結合ルール |
+
 ---
 
 # 開発環境
@@ -767,6 +775,7 @@ pnpm build
 - [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)
 - [OpenStreetMap](https://www.openstreetmap.org/)
 - [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/)
+- [Supabase Docs](https://supabase.com/docs)
 
 参考文献・引用リストは、古橋研究室のルールに従い、本リポジトリの独立したIssueとして管理する予定である。
 
