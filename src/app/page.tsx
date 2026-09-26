@@ -9,6 +9,7 @@ export default function Home() {
         <Link href="/dev/lastfm-test">Last.fm取得検証</Link>
         <Link href="/dev/location-test">位置情報取得検証</Link>
         <Link href="/dev/timeline-join-test">Scrobble・位置ログ結合検証</Link>
+        <Link href="/auth">Supabase認証</Link>
       </nav>
     </main>
   );
