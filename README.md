@@ -346,31 +346,24 @@ Spot単位の分析は比較・集計に適している一方で、元の移動�
 
 ## 2.10 データベース設計
 
-Supabase上では、音楽、位置、Journey、Spotを単一テーブルにまとめず、役割ごとに分離する予定である。
+Supabase上では、音楽、位置、Journey、Spotを単一テーブルにまとめず、役割ごとに分離する。
 
-主要なテーブル候補は以下のとおりである。
+Migration（`supabase/migrations/20260926000000_initial_schema.sql`）として実装済みのテーブルは以下のとおりである。
 
 - `profiles`
 - `music_accounts`
 - `tracks`
 - `track_external_ids`
-- `track_tags`
 - `recording_sessions`
 - `location_samples`
 - `listening_events`
 - `journeys`
-- `journey_tracks`
-- `spots`
-- `spot_tracks`
-- `spot_exact_locations`
-- `spot_locations`
-- `places`
-- `likes`
+- `join_results`
 - `research_consents`
 
-Last.fmの同一Scrobbleを重複保存しないため、ユーザー、音楽サービス、再生開始時刻、アーティスト名、曲名から安定した外部イベントキーを生成する予定である。
+Spot関連（`spots`、`spot_tracks`、`spot_exact_locations`、`spot_locations`、`places`）と`likes`、`track_tags`は、Spot実装に合わせて後続のMigrationで追加する予定である。
 
-実際のテーブル構成は、Supabaseの実装前にER図とMigrationとして確定する。
+Last.fmの同一Scrobbleを重複保存しないため、`listening_events.external_event_key`として、ユーザーID、音楽サービス、再生開始時刻（UNIX秒）、アーティスト名、曲名の正規化JSON配列からハッシュ生成した安定した外部イベントキーを実装した。
 
 ## 2.11 プライバシー
 
@@ -393,9 +386,9 @@ Last.fmの同一Scrobbleを重複保存しないため、ユーザー、音楽�
 
 # 3. Results
 
-## 3.1 構想発表時点の進捗
+## 3.1 現時点の進捗（2026年9月）
 
-2026年8月時点では、本番アプリを実装する前に、技術的に不確実な部分を分離して検証している。
+2026年8月の構想発表以降、時系列結合ロジックの残課題を修正し、Supabaseによる永続化とユーザー認証を実装した。
 
 | 項目 | 状態 | 内容 |
 | --- | --- | --- |
@@ -404,15 +397,17 @@ Last.fmの同一Scrobbleを重複保存しないため、ユーザー、音楽�
 | Last.fmログ出力 | 完了 | JSON・CSVで取得結果を保存可能 |
 | 連続位置取得ページ | 実装済み | `watchPosition()`による検証ページを作成 |
 | スマートフォン実機検証 | 保留 | HTTPS環境の準備後に再検証予定 |
-| Scrobble・位置ログ結合 | 実装済み | ダミー位置ログと確定Scrobbleを時刻で結合 |
-| Fixture検証 | 完了 | 正常系、位置不足、同曲連続、日付またぎなどを検証 |
-| 自動テスト | 成功 | 現行版では12件の結合ロジックテストが成功 |
-| Journey生成 | 中核ロジック検証中 | Journeyの元となる位置・音楽の時系列結合を実装済み |
+| Scrobble・位置ログ結合 | 完了 | 半開区間化、安定した外部イベントキー、入力検証まで実装 |
+| Fixture検証 | 完了 | 正常系、位置不足、同曲連続、日付またぎ、重複位置IDなどを検証 |
+| 自動テスト | 成功 | 現行版では29件の結合ロジックテストが成功 |
+| Supabaseスキーマ・Migration | 完了 | `profiles`〜`research_consents`まで10テーブルをMigrationとして実装 |
+| ユーザー認証・RLS | 実装済み | Supabase Auth（メール認証）と全テーブルのRow Level Securityを実装 |
+| Recording Session／Journeyの永続化 | 実装済み | 作成・取得・一覧のAPIルートとDB連携を実装 |
+| Journey生成（時系列結合→Journey） | 中核ロジック検証中 | 結合ロジックとJourneyテーブルは実装済みだが、両者を結ぶサーバー処理は未実装 |
 | Journey地図表示 | 未実装 | ルートと曲区間の可視化が必要 |
 | Spot（その場で作成） | 未実装 | 現在再生中の曲と現在地から作成する機能 |
-| Spot（Journeyから作成） | 中核ロジック検証中 | 曲ごとの代表地点候補を生成可能 |
-| Supabase | 未実装 | スキーマ設計後に導入予定 |
-| ユーザー認証・RLS | 未実装 | Supabase導入時に実装予定 |
+| Spot（Journeyから作成） | 中核ロジック検証中 | 曲ごとの代表地点候補を生成可能、DBテーブルは未実装 |
+| Last.fmアカウント連携の保存 | 未実装 | `music_accounts`テーブルは存在するが、保存処理は未実装 |
 | 複数ユーザーでの共有 | 未実装 | JourneyとSpotの公開範囲を含めて設計予定 |
 | 場所・移動状況の分析 | 未実装 | データ収集後に実施予定 |
 
@@ -481,6 +476,22 @@ joinScrobblesWithLocations(
 
 このロジックは、当初は曲ごとのSpot候補を生成する目的で検証したが、Journey内で曲の時間的・空間的な区間を表現する基盤としても利用できる。
 
+構想発表時点で残っていた以下の3点も修正済みである。
+
+- 曲区間を半開区間 `[startedAt, estimatedEndedAt)` とし、境界時刻にある位置サンプルの二重所属を防止した。
+- Last.fmの同一Scrobbleを再取得後も識別できる、安定した外部イベントキー（`user_id`・`provider`・`unix時刻`・アーティスト名・曲名から生成）を実装した（`src/lib/timeline-join/lastfm-external-event-key.ts`）。
+- 不正な時刻・座標・曲時間・同一開始時刻などを弾く入力検証を追加した（`src/lib/timeline-join/validation.ts`）。
+
+## 3.5 Supabaseによる永続化・認証
+
+Supabaseプロジェクトを作成し、以下を実装した。
+
+- `supabase/migrations/20260926000000_initial_schema.sql`：`profiles`、`music_accounts`、`tracks`、`track_external_ids`、`recording_sessions`、`location_samples`、`listening_events`、`journeys`、`join_results`、`research_consents`の10テーブルと、全テーブルへのRow Level Security（本人のみアクセス可能）を定義するMigration。
+- `/auth`：Supabase Authによるメールアドレス・パスワードでのサインアップ／サインイン、確認メール経由のコールバック処理（`src/app/auth/callback/route.ts`）。
+- Recording SessionとJourneyの作成・取得・一覧を行うAPIルート（`src/app/api/recording-sessions`、`src/app/api/journeys`）と、対応するDBアクセス関数（`src/lib/recording-sessions`、`src/lib/journeys`）。
+
+現時点では、位置ログ（`location_samples`）や視聴イベント（`listening_events`）の書き込みAPI、時系列結合結果（`join_results`）の生成・保存、Last.fmアカウント連携（`music_accounts`）の保存は未実装であり、Spot関連のテーブルもMigrationにまだ含めていない。
+
 ---
 
 # 4. Discussion
@@ -546,11 +557,11 @@ Last.fmの確定Scrobbleが持つ再生開始時刻と、独立して記録し�
 - Journeyの開始・終了を利用者の操作に任せるか、自動判定を取り入れるか検討が必要である。
 - 徒歩、電車、自転車などの移動手段を区別するか決める必要がある。
 - 滞在と通過をどのように判定するか検討が必要である。
-- 曲区間の境界時刻にある位置サンプルの扱いを追加検証する必要がある。
-- Last.fmの同一Scrobbleを安定して識別する外部イベントキーが必要である。
-- 不正な日時や座標が入力された場合のバリデーションが必要である。
 - MusicBrainzから楽曲時間やタグを安定して取得できるか検証が必要である。
-- 正確な経路・位置と公開情報を分離したデータベースとRLSが未実装である。
+- Recording Sessionで取得した位置ログ・視聴イベントをDBへ書き込むAPIが未実装である。
+- 時系列結合処理（`joinScrobblesWithLocations`）とJourney生成をサーバー上で連携させる処理が未実装である。
+- Last.fmアカウント連携情報（`music_accounts`）の保存処理が未実装である。
+- Spot関連テーブルとAPIが未実装であり、正確な経路・位置と公開情報を分離する仕組みも未実装である。
 - Journey同士を比較する分析指標を具体化する必要がある。
 - 研究で収集するJourney数、参加者数、期間、同意方法を確定する必要がある。
 - Journeyを記録する参加者の操作負担を評価する必要がある。
@@ -634,7 +645,7 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 
 ## 5.3 今後の作業
 
-### 2026年8月
+### 2026年8月（完了）
 
 - 曲区間を半開区間に変更
 - Last.fmの安定したイベントキーを追加
@@ -642,19 +653,20 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 - 自動テストを追加
 - Journey中心のREADMEと研究計画を確定
 - 卒論用GitHubリポジトリへpush
-- LICENSEと参考文献Issueを整備
 - JourneyとSpotを含むER図を確定
 - Supabaseのデータベース設計を確定
 
 ### 2026年9月
 
-- Supabaseプロジェクト作成
-- Migration作成
-- Supabase Auth実装
-- Row Level Security設定
-- FixtureのRecording Session、Journey、Spotを保存・再取得
-- Last.fmアカウント連携情報の保存
-- Journey生成処理のサーバー・DB連携
+- [x] Supabaseプロジェクト作成
+- [x] Migration作成
+- [x] Supabase Auth実装
+- [x] Row Level Security設定
+- [x] Recording SessionとJourneyの作成・取得・一覧API実装
+- [ ] LICENSEと参考文献Issueを整備
+- [ ] 位置ログ・視聴イベントのDB書き込みAPI実装
+- [ ] Last.fmアカウント連携情報（`music_accounts`）の保存
+- [ ] 時系列結合処理とJourney生成のサーバー・DB連携
 
 ### 2026年10月
 
@@ -693,23 +705,24 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 
 ## 5.4 次の作業
 
-構想発表後は、時系列結合ロジックに残っている以下の3点を修正する。
+時系列結合ロジックの修正、GitHubへのpush、Supabaseによるスキーマ・認証・RLSの実装までは完了した。
 
-1. 曲区間を半開区間 `[start, end)` とし、境界位置の二重所属を防止する。
-2. Last.fmの同一Scrobbleを再取得後も識別できる、安定した外部イベントキーを生成する。
-3. 不正な時刻、曲時間、座標、同一開始時刻などの入力検証を追加する。
+次に着手するのは、以下の3点である。
 
-修正と自動テストが完了した後、GitHubへのpushとSupabaseの実装へ進む。
+1. 位置ログ・視聴イベントをDBへ書き込むAPIを実装する。
+2. `joinScrobblesWithLocations`をサーバー上でRecording Session・Journeyに接続し、`join_results`へ保存する。
+3. MapLibreによるJourneyの経路・曲区間表示に着手する。
 
 ---
 
-# リポジトリ内の技術検証ページ
+# リポジトリ内の技術検証ページ・機能
 
 | URL | 内容 |
 | --- | --- |
 | `/dev/lastfm-test` | Last.fmの再生中情報・確定Scrobble取得検証 |
 | `/dev/location-test` | Geolocation APIによる連続位置取得検証 |
 | `/dev/timeline-join-test` | Scrobbleと位置ログの時刻結合検証 |
+| `/auth` | Supabase Authによるサインアップ・サインイン |
 
 ---
 
@@ -726,7 +739,13 @@ pnpm dev
 ```env
 LASTFM_API_KEY=
 LASTFM_USERNAME=
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
+
+Supabaseのテーブル・RLSは `supabase/migrations/20260926000000_initial_schema.sql` をSupabaseプロジェクトへ適用することで作成できる。
 
 利用可能なコマンド：
 
