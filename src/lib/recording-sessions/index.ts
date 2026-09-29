@@ -1,5 +1,6 @@
 export {
   createRecordingSession,
+  endRecordingSession,
   getRecordingSession,
   listRecordingSessions,
 } from "./recording-sessions.ts";

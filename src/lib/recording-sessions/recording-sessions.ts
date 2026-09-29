@@ -52,6 +52,23 @@ export async function getRecordingSession(
   return data ? mapRow(data) : null;
 }
 
+export async function endRecordingSession(
+  client: SupabaseClient,
+  userId: string,
+  id: string,
+): Promise<RecordingSession | null> {
+  const { data, error } = await client
+    .from("recording_sessions")
+    .update({ ended_at: new Date().toISOString(), status: "completed" })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .eq("status", "recording")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapRow(data) : null;
+}
+
 export async function listRecordingSessions(
   client: SupabaseClient,
   userId: string,
