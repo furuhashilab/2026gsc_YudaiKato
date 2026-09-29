@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getAuthenticatedUser } from "@/lib/supabase/server-client.ts";
+
 export type LastFmRecentTrack = {
   trackName: string;
   artistName: string;
@@ -31,6 +33,11 @@ function isLastFmError(value: LastFmSuccess | LastFmError): value is LastFmError
 }
 
 export async function GET() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+
   const apiKey = process.env.LASTFM_API_KEY?.trim();
   const username = process.env.LASTFM_USERNAME?.trim();
   const missing = [!apiKey && "LASTFM_API_KEY", !username && "LASTFM_USERNAME"].filter(Boolean);
