@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type LocationTestLog = {
   id: string;
+  sampleId: string;
   sessionId: string;
   recordedAt: string;
   recordedAtUnixMs: number;
@@ -34,7 +35,7 @@ type LocationTestEvent = {
   detail?: string;
 };
 
-type LatestPosition = Omit<LocationTestLog, "id" | "sessionId" | "intervalFromPreviousMs">;
+type LatestPosition = Omit<LocationTestLog, "id" | "sampleId" | "sessionId" | "intervalFromPreviousMs">;
 
 const MIN_SAVE_INTERVAL_MS = 10_000;
 const MAX_RENDERED_LOGS = 200;
@@ -200,8 +201,10 @@ export default function LocationTestPage() {
       return;
     }
 
+    const sampleId = crypto.randomUUID();
     const log: LocationTestLog = {
-      id: createId(),
+      id: sampleId,
+      sampleId,
       sessionId: sessionIdRef.current,
       ...currentPosition,
       intervalFromPreviousMs: intervalFromPreviousSave,
@@ -323,13 +326,13 @@ export default function LocationTestPage() {
 
   function saveCsv() {
     const headers = [
-      "session_id", "received_at", "received_at_unix_ms", "geolocation_recorded_at",
+      "client_sample_id", "session_id", "received_at", "received_at_unix_ms", "geolocation_recorded_at",
       "geolocation_timestamp_ms", "position_age_at_receipt_ms", "latitude", "longitude",
       "accuracy_m", "altitude_m", "altitude_accuracy_m", "heading_deg", "speed_mps",
       "visibility_state", "interval_from_previous_ms",
     ];
     const rows = logs.map((log) => [
-      log.sessionId, log.recordedAt, log.recordedAtUnixMs, log.geolocationRecordedAt,
+      log.sampleId, log.sessionId, log.recordedAt, log.recordedAtUnixMs, log.geolocationRecordedAt,
       log.geolocationTimestampMs, log.positionAgeAtReceiptMs, log.latitude, log.longitude,
       log.accuracyM, log.altitudeM, log.altitudeAccuracyM, log.headingDeg, log.speedMps,
       log.visibilityState, log.intervalFromPreviousMs,

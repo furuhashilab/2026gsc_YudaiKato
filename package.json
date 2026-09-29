@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/timeline-join/join-timeline.test.mts"
+    "test": "node --experimental-strip-types --test src/lib/timeline-join/join-timeline.test.mts src/lib/lastfm/lastfm-client.test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

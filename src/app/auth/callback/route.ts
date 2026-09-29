@@ -7,7 +7,17 @@ import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-client.t
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  let next = searchParams.get("next") ?? "/";
+
+  try {
+    const url = new URL(next, origin);
+    // @始まりの値を拒否し、検証済みURLのパスだけを遷移先に使う。
+    next = url.origin === origin && !next.trimStart().startsWith("@")
+      ? `${url.pathname}${url.search}${url.hash}`
+      : "/";
+  } catch {
+    next = "/";
+  }
 
   if (code) {
     const supabase = await createSupabaseRouteHandlerClient();

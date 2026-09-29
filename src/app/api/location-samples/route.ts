@@ -6,6 +6,7 @@ import { getRecordingSession } from "@/lib/recording-sessions";
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from "@/lib/supabase/server-client.ts";
 
 type RawSample = {
+  sampleId?: unknown;
   recordedAt?: unknown;
   geolocationRecordedAt?: unknown;
   positionAgeAtReceiptMs?: unknown;
@@ -20,11 +21,16 @@ type RawSample = {
 };
 
 function parseSample(raw: RawSample): CreateLocationSampleInput | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (raw.sampleId !== undefined && (
+    typeof raw.sampleId !== "string" || !raw.sampleId.trim()
+  )) return null;
   if (typeof raw.recordedAt !== "string") return null;
   if (typeof raw.latitude !== "number") return null;
   if (typeof raw.longitude !== "number") return null;
 
   return {
+    sampleId: raw.sampleId,
     recordedAt: raw.recordedAt,
     geolocationRecordedAt:
       typeof raw.geolocationRecordedAt === "string" ? raw.geolocationRecordedAt : null,
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
     const sample = parseSample(raw);
     if (!sample) {
       return NextResponse.json(
-        { error: "samplesの各要素にはrecordedAt, latitude, longitudeが必要です。" },
+        { error: "samplesの各要素にはrecordedAt, latitude, longitudeが必要です。sampleIdは省略するか空でない文字列を指定してください。" },
         { status: 400 },
       );
     }
