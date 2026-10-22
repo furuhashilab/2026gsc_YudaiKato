@@ -2,6 +2,7 @@ node_modules/
 .next/
 out/
 .vercel
+/public/maplibre-gl-worker.mjs
 .env
 .env.local
 .env.*.local
