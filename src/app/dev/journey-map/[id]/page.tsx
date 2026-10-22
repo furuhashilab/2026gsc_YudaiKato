@@ -51,18 +51,13 @@ type MapDataResponse = {
   segments: Segment[];
 };
 
-const OSM_STYLE = {
-  version: 8 as const,
-  sources: {
-    osm: {
-      type: "raster" as const,
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors",
-    },
-  },
-  layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
-};
+/**
+ * tile.openstreetmap.orgはVercel環境からのCORSを許可していないため、
+ * CORS対応済みのOpenFreeMapが配信するベクタースタイルを利用する。
+ * attributionはこのスタイルのsourcesに含まれており、デフォルトで有効な
+ * AttributionControlがそこから自動的に表示する。
+ */
+const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 const DEFAULT_CENTER: GeoJsonPosition = [139.7671, 35.6812];
 
@@ -132,7 +127,7 @@ export default function JourneyMapPage() {
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: OSM_STYLE,
+      style: MAP_STYLE_URL,
       center: DEFAULT_CENTER,
       zoom: 11,
     });
@@ -235,7 +230,7 @@ export default function JourneyMapPage() {
   return (
     <main className="journey-map">
       <h1>Journey地図表示（開発用）</h1>
-      <p className="notice">地図タイルはOpenStreetMapのラスタタイルを利用しています。</p>
+      <p className="notice">地図タイルはOpenFreeMapが配信するベクタースタイル（liberty）を利用しています。</p>
 
       {loading && <p className="summary">読み込み中…</p>}
       {error && <p className="error" role="alert"><strong>エラー:</strong> {error}</p>}
