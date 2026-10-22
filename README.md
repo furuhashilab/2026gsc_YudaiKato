@@ -133,6 +133,7 @@ Music Walk Mapは、音楽視聴履歴、位置情報、Journey、Spotを組み�
 - Supabase
 - PostgreSQL
 - MapLibre GL JS
+- OpenFreeMap（ベクタータイル）
 - OpenStreetMap
 
 開発にはCodexなどのLLMを活用する。ただし、生成されたコードは技術検証、自動テスト、コードレビューを行った上で採用する。
@@ -409,7 +410,7 @@ Last.fmの同一Scrobbleを重複保存しないため、`listening_events.exter
 | 結合処理・join_results保存 | 完了 | `POST /api/journeys/[id]/join`で`joinScrobblesWithLocations`を実行し、実行条件を`join_runs`、結合結果を`join_results`へ保存 |
 | Journey生成（時系列結合→Journey） | 中核ロジック検証中 | 結合処理・join_results保存までは実装済みだが、結合結果を用いたJourney本体（経路・曲順）の生成は未実装 |
 | フィールド検証用UI（`/dev/journey-recorder`） | 実装済み | 記録開始・終了のワンタップ操作で、GPS保存・Scrobble取得・Journey作成・結合処理までを連続実行する開発用ページを実装 |
-| Journey地図表示 | 未実装 | ルートと曲区間の可視化が必要（次のステップ） |
+| Journey地図表示 | 実装済み | `GET /api/journeys/[id]/map-data`でGPSトラック・曲区間をGeoJSON化し、`/dev/journey-map/[id]`でMapLibre GL JSによる地図表示・曲区間ごとのPopup表示まで実装 |
 | Spot（その場で作成） | 未実装 | 現在再生中の曲と現在地から作成する機能 |
 | Spot（Journeyから作成） | 中核ロジック検証中 | 曲ごとの代表地点候補を生成可能、DBテーブルは未実装 |
 | Last.fmアカウント連携の保存 | 未実装 | `music_accounts`テーブルは存在するが、保存処理は未実装 |
@@ -503,6 +504,19 @@ Supabaseプロジェクトを作成し、以下を実装した。
 - `POST /api/journeys/[id]/join`：対象Journeyのセッションに紐づく確定Scrobble（`listening_events`）と位置ログ（`location_samples`）を取得し、`joinScrobblesWithLocations`で時刻結合した結果を保存するAPI。1回の実行条件（アルゴリズムバージョン・設定）を`join_runs`へ、曲ごとの結合結果を`join_run_id`で紐づけて`join_results`へ保存する（`src/lib/join-runs`、`src/lib/join-results`）。
 
 現時点では、`join_results`を用いたJourney本体（経路・曲順）の生成、Last.fmアカウント連携（`music_accounts`）の保存は未実装であり、Spot関連のテーブルもMigrationにまだ含めていない。
+
+## 3.6 Journey地図表示
+
+Journeyの移動経路と曲区間を地図上で確認できる検証ページ`/dev/journey-map/[id]`を実装した。
+
+- `GET /api/journeys/[id]/map-data`：対象Journeyの`location_samples`と最新の`join_run`・`join_results`から、GPSトラックと曲区間をGeoJSONとして生成するAPI。位置サンプルの時刻差が60秒以上空いている箇所でGPSトラックを複数系列に分割し、孤立した単一点の系列は除外する。
+- `/dev/journey-map/[id]`：MapLibre GL JSでGPSトラック（線）と曲区間（線・点、`matchStatus`で色分け）を表示するページ。曲区間一覧テーブルも併設する。
+
+実装過程で生じた問題と対応は以下のとおりである。
+
+- maplibre-gl v6はWorkerを`import.meta.url`相対パスで解決するが、Turbopackはこれを正しく配信できず、Worker読み込みエラーが発生した。`maplibre-gl/dist/maplibre-gl-worker.mjs`をpostinstallスクリプトで`public/`へコピーし、静的アセットとして配信することで解決した。
+- `tile.openstreetmap.org`のOSMラスタータイルはVercelデプロイ先からのリクエストにCORSヘッダーを返さず、本番環境でタイルが読み込めなかった。CORS対応済みのOpenFreeMapベクタースタイル（`https://tiles.openfreemap.org/styles/liberty`）へ切り替えた。
+- MapLibreのレイヤー単位イベントは、実際にフィーチャーが描画されているピクセルでしか発火しない。線幅4px・円半径6pxの表示用レイヤーではヒット領域が実質2px程度しかなくクリックできなかったため、同じソース上に透明な当たり判定用レイヤー（線幅20px・円半径14px）を追加し、クリック・ホバーのイベントハンドラをそちらに付け替えて解決した。
 
 ---
 
@@ -683,8 +697,8 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 
 ### 2026年10月（次のステップ）
 
-- [ ] MapLibreによるJourneyの経路表示
-- [ ] Journey内の曲区間・曲順表示
+- [x] MapLibreによるJourneyの経路表示（`GET /api/journeys/[id]/map-data`、`/dev/journey-map/[id]`）
+- [x] Journey内の曲区間・曲順表示（地図上のPopup・曲区間テーブル）
 - [ ] `join_results`を用いたJourney本体（経路・曲順）の生成
 - [ ] JourneyからSpotを作成する画面
 - [ ] その場でSpotを作成する機能
@@ -736,6 +750,7 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 | `/dev/location-test` | Geolocation APIによる連続位置取得検証 |
 | `/dev/timeline-join-test` | Scrobbleと位置ログの時刻結合検証 |
 | `/dev/journey-recorder` | 記録開始・終了のワンタップ操作で、GPS保存・Scrobble取得・Journey作成・結合処理までを一気通貫で実行するフィールド検証用UI |
+| `/dev/journey-map/[id]` | MapLibre GL JS（OpenFreeMapベクタータイル）によるGPSトラック・曲区間の地図表示。曲区間はクリック・ホバーでPopup表示、一覧テーブルも併設 |
 | `/auth` | Supabase Authによるサインアップ・サインイン |
 
 各検証ページの詳しい手順は`docs/`配下に記載している。
@@ -789,6 +804,7 @@ pnpm build
 - [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)
 - [OpenStreetMap](https://www.openstreetmap.org/)
 - [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/)
+- [OpenFreeMap](https://openfreemap.org/)
 - [Supabase Docs](https://supabase.com/docs)
 
 参考文献・引用リストは、古橋研究室のルールに従い、本リポジトリの独立したIssueとして管理する予定である。
