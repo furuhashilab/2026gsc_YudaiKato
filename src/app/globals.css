@@ -21,6 +21,7 @@ code { word-break: break-all; }
 .status-grid div { display: grid; gap: 6px; padding: 14px; background: white; border: 1px solid #dde1e7; border-radius: 8px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .actions button:not(:first-child) { color: #172033; background: white; border-color: #b8c0cc; }
+.actions a { display: inline-flex; align-items: center; padding: 9px 12px; color: #172033; background: white; border: 1px solid #b8c0cc; border-radius: 6px; text-decoration: none; }
 .now-playing-panel { padding: 16px; border: 2px solid #b90000; border-radius: 8px; background: #fff7f7; }
 .now-playing-panel h2 { color: #b90000; }
 .log-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
@@ -40,6 +41,8 @@ th { background: #eef1f5; }
 @keyframes recording-pulse { 70% { box-shadow: 0 0 0 8px rgb(213 37 37 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(213 37 37 / 0%); } }
 @media (prefers-reduced-motion: reduce) { .is-recording .recording-indicator { animation: none; } }
 .journey-recorder section { margin-top: 28px; }
+.journey-map section { margin-top: 28px; }
+.map-canvas { width: 100%; height: 520px; border: 1px solid #dde1e7; border-radius: 10px; overflow: hidden; }
 .dev-links { display: grid; gap: 10px; width: min(420px, 100%); margin-top: 24px; }
 .dev-links a { padding: 14px 16px; color: #172033; background: white; border: 1px solid #dde1e7; border-radius: 8px; text-decoration: none; }
 .dev-links a:hover { border-color: #b90000; color: #8c1010; }

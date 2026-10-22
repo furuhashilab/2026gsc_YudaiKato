@@ -429,6 +429,11 @@ export default function JourneyRecorderPage() {
             <div><strong>結合アルゴリズム</strong><span>{result.algorithmVersion}</span></div>
             <div><strong>Join Run ID</strong><span>{result.joinRunId}</span></div>
           </div>
+          {journeyId && (
+            <div className="actions">
+              <a href={`/dev/journey-map/${journeyId}`}>地図で見る</a>
+            </div>
+          )}
         </section>
       )}
     </main>

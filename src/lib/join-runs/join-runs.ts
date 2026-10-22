@@ -26,6 +26,21 @@ function mapRow(row: JoinRunRow): JoinRun {
   };
 }
 
+export async function getLatestJoinRunByJourney(
+  client: SupabaseClient,
+  journeyId: string,
+): Promise<JoinRun | null> {
+  const { data, error } = await client
+    .from("join_runs")
+    .select()
+    .eq("journey_id", journeyId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapRow(data) : null;
+}
+
 export async function createJoinRun(
   client: SupabaseClient,
   input: CreateJoinRunInput,
