@@ -408,6 +408,7 @@ Last.fmの同一Scrobbleを重複保存しないため、`listening_events.exter
 | Scrobble取得・保存 | 完了 | `POST /api/recording-sessions/[id]/scrobbles`でセッション時間帯の確定Scrobbleを取得し、`tracks`・`listening_events`へ保存 |
 | 結合処理・join_results保存 | 完了 | `POST /api/journeys/[id]/join`で`joinScrobblesWithLocations`を実行し、実行条件を`join_runs`、結合結果を`join_results`へ保存 |
 | Journey生成（時系列結合→Journey） | 中核ロジック検証中 | 結合処理・join_results保存までは実装済みだが、結合結果を用いたJourney本体（経路・曲順）の生成は未実装 |
+| フィールド検証用UI（`/dev/journey-recorder`） | 実装済み | 記録開始・終了のワンタップ操作で、GPS保存・Scrobble取得・Journey作成・結合処理までを連続実行する開発用ページを実装 |
 | Journey地図表示 | 未実装 | ルートと曲区間の可視化が必要（次のステップ） |
 | Spot（その場で作成） | 未実装 | 現在再生中の曲と現在地から作成する機能 |
 | Spot（Journeyから作成） | 中核ロジック検証中 | 曲ごとの代表地点候補を生成可能、DBテーブルは未実装 |
@@ -734,6 +735,7 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 | `/dev/lastfm-test` | Last.fmの再生中情報・確定Scrobble取得検証 |
 | `/dev/location-test` | Geolocation APIによる連続位置取得検証 |
 | `/dev/timeline-join-test` | Scrobbleと位置ログの時刻結合検証 |
+| `/dev/journey-recorder` | 記録開始・終了のワンタップ操作で、GPS保存・Scrobble取得・Journey作成・結合処理までを一気通貫で実行するフィールド検証用UI |
 | `/auth` | Supabase Authによるサインアップ・サインイン |
 
 各検証ページの詳しい手順は`docs/`配下に記載している。
