@@ -1,4 +1,7 @@
-export { createLocationSamples } from "./location-samples.ts";
+export {
+  createLocationSamples,
+  listLocationSamplesBySession,
+} from "./location-samples.ts";
 export type {
   CreateLocationSampleInput,
   LocationSample,
