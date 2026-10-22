@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { CreateListeningEventInput, ListeningEvent } from "./types.ts";
+import type {
+  CreateListeningEventInput,
+  ListeningEvent,
+  ListeningEventWithTrack,
+} from "./types.ts";
 
 type ListeningEventRow = {
   id: string;
@@ -14,6 +18,10 @@ type ListeningEventRow = {
   created_at: string;
 };
 
+type ListeningEventWithTrackRow = ListeningEventRow & {
+  tracks: { title: string; artist_name: string } | null;
+};
+
 function mapRow(row: ListeningEventRow): ListeningEvent {
   return {
     id: row.id,
@@ -25,6 +33,14 @@ function mapRow(row: ListeningEventRow): ListeningEvent {
     status: row.status,
     rawPayload: row.raw_payload,
     createdAt: row.created_at,
+  };
+}
+
+function mapRowWithTrack(row: ListeningEventWithTrackRow): ListeningEventWithTrack {
+  return {
+    ...mapRow(row),
+    trackName: row.tracks?.title ?? "",
+    artistName: row.tracks?.artist_name ?? "",
   };
 }
 
@@ -54,4 +70,18 @@ export async function createListeningEvents(
     .select();
   if (error) throw error;
   return (data ?? []).map(mapRow);
+}
+
+export async function listConfirmedListeningEventsWithTrack(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<ListeningEventWithTrack[]> {
+  const { data, error } = await client
+    .from("listening_events")
+    .select("*, tracks(title, artist_name)")
+    .eq("session_id", sessionId)
+    .eq("status", "confirmed")
+    .order("started_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(mapRowWithTrack);
 }

@@ -40,6 +40,19 @@ function mapRow(row: LocationSampleRow): LocationSample {
   };
 }
 
+export async function listLocationSamplesBySession(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<LocationSample[]> {
+  const { data, error } = await client
+    .from("location_samples")
+    .select()
+    .eq("session_id", sessionId)
+    .order("recorded_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
+}
+
 export async function createLocationSamples(
   client: SupabaseClient,
   sessionId: string,

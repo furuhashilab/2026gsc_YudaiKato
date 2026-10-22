@@ -17,3 +17,8 @@ export type CreateListeningEventInput = {
   startedAt: string;
   rawPayload?: Record<string, unknown> | null;
 };
+
+export type ListeningEventWithTrack = ListeningEvent & {
+  trackName: string;
+  artistName: string;
+};

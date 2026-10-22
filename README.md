@@ -358,6 +358,7 @@ Migration（`supabase/migrations/20260926000000_initial_schema.sql`）として�
 - `location_samples`
 - `listening_events`
 - `journeys`
+- `join_runs`
 - `join_results`
 - `research_consents`
 
@@ -400,13 +401,14 @@ Last.fmの同一Scrobbleを重複保存しないため、`listening_events.exter
 | Scrobble・位置ログ結合 | 完了 | 半開区間化、安定した外部イベントキー、入力検証まで実装 |
 | Fixture検証 | 完了 | 正常系、位置不足、同曲連続、日付またぎ、重複位置IDなどを検証 |
 | 自動テスト | 成功 | 結合ロジック・Last.fmクライアント・位置ログ冪等性のテストが成功 |
-| Supabaseスキーマ・Migration | 完了 | `profiles`〜`research_consents`の10テーブルに加え、`join_results`の`end_method`整合と`location_samples`への`client_sample_id`追加を実装 |
+| Supabaseスキーマ・Migration | 完了 | `profiles`〜`research_consents`の10テーブルに加え、`join_results`の`end_method`整合、`location_samples`への`client_sample_id`追加、`join_runs`テーブル追加を実装 |
 | ユーザー認証・RLS | 実装済み | Supabase Auth（メール認証、Cookieセッション）と全テーブルのRow Level Securityを実装 |
 | Recording Sessionの永続化・終了処理 | 実装済み | 作成・取得・一覧に加え、`PATCH /api/recording-sessions/[id]`によるセッション終了を実装 |
-| 位置ログ保存API | 実装済み | `POST /api/location-samples`によるバッチ保存・`client_sample_id`での重複排除を実装 |
-| Last.fm Scrobble取得・保存API | 実装済み | `POST /api/recording-sessions/[id]/scrobbles`でセッション時間帯の確定Scrobbleを取得し、`tracks`・`listening_events`へ保存 |
-| Journey生成（時系列結合→Journey） | 中核ロジック検証中 | 結合ロジック・位置ログ保存・Scrobble保存は実装済みだが、`joinScrobblesWithLocations`をJourney生成へ接続するサーバー処理は未実装 |
-| Journey地図表示 | 未実装 | ルートと曲区間の可視化が必要 |
+| GPS保存（位置ログ保存API） | 完了 | `POST /api/location-samples`によるバッチ保存・`client_sample_id`での重複排除を実装 |
+| Scrobble取得・保存 | 完了 | `POST /api/recording-sessions/[id]/scrobbles`でセッション時間帯の確定Scrobbleを取得し、`tracks`・`listening_events`へ保存 |
+| 結合処理・join_results保存 | 完了 | `POST /api/journeys/[id]/join`で`joinScrobblesWithLocations`を実行し、実行条件を`join_runs`、結合結果を`join_results`へ保存 |
+| Journey生成（時系列結合→Journey） | 中核ロジック検証中 | 結合処理・join_results保存までは実装済みだが、結合結果を用いたJourney本体（経路・曲順）の生成は未実装 |
+| Journey地図表示 | 未実装 | ルートと曲区間の可視化が必要（次のステップ） |
 | Spot（その場で作成） | 未実装 | 現在再生中の曲と現在地から作成する機能 |
 | Spot（Journeyから作成） | 中核ロジック検証中 | 曲ごとの代表地点候補を生成可能、DBテーブルは未実装 |
 | Last.fmアカウント連携の保存 | 未実装 | `music_accounts`テーブルは存在するが、保存処理は未実装 |
@@ -491,13 +493,15 @@ Supabaseプロジェクトを作成し、以下を実装した。
 - `supabase/migrations/20260926000000_initial_schema.sql`：`profiles`、`music_accounts`、`tracks`、`track_external_ids`、`recording_sessions`、`location_samples`、`listening_events`、`journeys`、`join_results`、`research_consents`の10テーブルと、全テーブルへのRow Level Security（本人のみアクセス可能）を定義するMigration。
 - `supabase/migrations/20260929000000_align_join_results_end_methods.sql`：`join_results`の`end_method`をRecording Sessionの終了方法と整合させるMigration。
 - `supabase/migrations/20260929010000_location_samples_client_sample_id.sql`：`location_samples`にクライアント側で採番した`client_sample_id`を追加し、再送時の重複保存を防止するMigration。
+- `supabase/migrations/20261022000000_add_join_runs.sql`：`join_runs`テーブルを追加し、`join_results`を1件の結合実行（`join_run_id`）に紐づけ直すMigration。`algorithm_version`・`config_snapshot`は`join_results`から`join_runs`側（`algorithm_version`・`algorithm_config`）へ集約した。
 - `/auth`：Supabase Authによるメールアドレス・パスワードでのサインアップ／サインイン、Cookieベースのセッション管理、確認メール経由のコールバック処理（`src/app/auth/callback/route.ts`）。
 - Recording SessionとJourneyの作成・取得・一覧を行うAPIルート（`src/app/api/recording-sessions`、`src/app/api/journeys`）と、対応するDBアクセス関数（`src/lib/recording-sessions`、`src/lib/journeys`）。
 - `PATCH /api/recording-sessions/[id]`：記録中のRecording Sessionを終了状態へ更新するAPI。
 - `POST /api/location-samples`：位置ログをバッチ保存するAPI。`client_sample_id`により同一サンプルの重複保存を防止する（`src/lib/location-samples`）。
 - `POST /api/recording-sessions/[id]/scrobbles`：終了済みRecording Sessionの時間帯に対応するLast.fmの確定Scrobbleを取得し、`tracks`・`track_external_ids`・`listening_events`へ保存するAPI（`src/lib/lastfm`、`src/lib/tracks`、`src/lib/listening-events`）。
+- `POST /api/journeys/[id]/join`：対象Journeyのセッションに紐づく確定Scrobble（`listening_events`）と位置ログ（`location_samples`）を取得し、`joinScrobblesWithLocations`で時刻結合した結果を保存するAPI。1回の実行条件（アルゴリズムバージョン・設定）を`join_runs`へ、曲ごとの結合結果を`join_run_id`で紐づけて`join_results`へ保存する（`src/lib/join-runs`、`src/lib/join-results`）。
 
-現時点では、時系列結合処理（`joinScrobblesWithLocations`）とJourney生成をサーバー上で連携させる処理、Last.fmアカウント連携（`music_accounts`）の保存は未実装であり、Spot関連のテーブルもMigrationにまだ含めていない。
+現時点では、`join_results`を用いたJourney本体（経路・曲順）の生成、Last.fmアカウント連携（`music_accounts`）の保存は未実装であり、Spot関連のテーブルもMigrationにまだ含めていない。
 
 ---
 
@@ -565,7 +569,7 @@ Last.fmの確定Scrobbleが持つ再生開始時刻と、独立して記録し�
 - 徒歩、電車、自転車などの移動手段を区別するか決める必要がある。
 - 滞在と通過をどのように判定するか検討が必要である。
 - MusicBrainzから楽曲時間やタグを安定して取得できるか検証が必要である。
-- 時系列結合処理（`joinScrobblesWithLocations`）とJourney生成をサーバー上で連携させる処理が未実装である。
+- 結合処理（`joinScrobblesWithLocations`）・`join_results`保存までは実装したが、その結果を用いたJourney本体（経路・曲順）の生成処理が未実装である。
 - Last.fmアカウント連携情報（`music_accounts`）の保存処理が未実装である。
 - Spot関連テーブルとAPIが未実装であり、正確な経路・位置と公開情報を分離する仕組みも未実装である。
 - Journey同士を比較する分析指標を具体化する必要がある。
@@ -672,19 +676,20 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 - [x] Recording Session終了API（`PATCH /api/recording-sessions/[id]`）実装
 - [x] 位置ログ書き込みAPI（`POST /api/location-samples`）実装
 - [x] Last.fm Scrobble取得・保存API（`POST /api/recording-sessions/[id]/scrobbles`）実装
+- [x] 結合処理・join_results保存API（`POST /api/journeys/[id]/join`、`join_runs`テーブル追加）実装
 - [ ] LICENSEと参考文献Issueを整備
 - [ ] Last.fmアカウント連携情報（`music_accounts`）の保存
-- [ ] 時系列結合処理とJourney生成のサーバー・DB連携
 
-### 2026年10月
+### 2026年10月（次のステップ）
 
-- MapLibreによるJourneyの経路表示
-- Journey内の曲区間・曲順表示
-- JourneyからSpotを作成する画面
-- その場でSpotを作成する機能
-- 正確な経路・位置と公開情報の分離
-- HTTPS環境へデプロイ
-- スマートフォンで位置取得を再検証
+- [ ] MapLibreによるJourneyの経路表示
+- [ ] Journey内の曲区間・曲順表示
+- [ ] `join_results`を用いたJourney本体（経路・曲順）の生成
+- [ ] JourneyからSpotを作成する画面
+- [ ] その場でSpotを作成する機能
+- [ ] 正確な経路・位置と公開情報の分離
+- [ ] HTTPS環境へデプロイ
+- [ ] スマートフォンで位置取得を再検証
 
 ### 2026年11月
 
@@ -713,12 +718,12 @@ Journeyの高度な共有機能、移動手段の自動判定、いいね・コ�
 
 ## 5.4 次の作業
 
-時系列結合ロジックの修正、GitHubへのpush、Supabaseによるスキーマ・認証・RLSの実装、位置ログ・Scrobbleの書き込みAPIの実装までは完了した。
+時系列結合ロジックの修正、GitHubへのpush、Supabaseによるスキーマ・認証・RLSの実装、位置ログ・Scrobbleの書き込みAPIの実装、結合処理・`join_results`保存API（`POST /api/journeys/[id]/join`）の実装までは完了した。
 
-次に着手するのは、以下の2点である。
+次に着手するのは、以下の点である（次のステップ）。
 
-1. `joinScrobblesWithLocations`をサーバー上でRecording Session・Journeyに接続し、`join_results`へ保存する。
-2. MapLibreによるJourneyの経路・曲区間表示に着手する。
+1. MapLibreによるJourneyの経路・曲区間表示に着手する。
+2. `join_results`を用いてJourney本体（経路・曲順）を生成するサーバー処理を実装する。
 
 ---
 
