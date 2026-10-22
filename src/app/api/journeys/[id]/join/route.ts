@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getJourney } from "@/lib/journeys";
-import { createJoinResults } from "@/lib/join-results";
 import {
-  createJoinRun,
+  createJoinRunWithResults,
   DEFAULT_JOIN_ALGORITHM_CONFIG,
   DEFAULT_JOIN_ALGORITHM_VERSION,
 } from "@/lib/join-runs";
@@ -67,17 +66,14 @@ export async function POST(
     const timelineLocationSamples = locationSamples.map(toTimelineLocationSample);
     const results = joinScrobblesWithLocations(scrobbles, timelineLocationSamples);
 
-    const joinRun = await createJoinRun(db, {
-      journeyId: journey.id,
-      algorithmVersion: DEFAULT_JOIN_ALGORITHM_VERSION,
-      algorithmConfig: DEFAULT_JOIN_ALGORITHM_CONFIG,
-    });
-
-    await createJoinResults(
+    const joinRun = await createJoinRunWithResults(
       db,
+      {
+        journeyId: journey.id,
+        algorithmVersion: DEFAULT_JOIN_ALGORITHM_VERSION,
+        algorithmConfig: DEFAULT_JOIN_ALGORITHM_CONFIG,
+      },
       results.map((result) => ({
-        sessionId: journey.sessionId,
-        joinRunId: joinRun.id,
         listeningEventId: result.eventId,
         representativeLocationId: null,
         estimatedEndedAt: result.estimatedEndedAt,
