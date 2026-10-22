@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/timeline-join/join-timeline.test.mts src/lib/lastfm/lastfm-client.test.mts"
+    "test": "node --experimental-strip-types --test src/lib/timeline-join/join-timeline.test.mts src/lib/lastfm/lastfm-client.test.mts",
+    "postinstall": "node -e \"const fs=require('node:fs');fs.mkdirSync('public',{recursive:true});fs.copyFileSync('node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs','public/maplibre-gl-worker.mjs')\""
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

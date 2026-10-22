@@ -2,8 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { LngLatBounds, Map as MapLibreMap, Popup } from "maplibre-gl";
+import { LngLatBounds, Map as MapLibreMap, Popup, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+/**
+ * maplibre-gl v6はWorkerをimport.meta.url相対で解決するが、Turbopackでは
+ * そのURLが正しくバンドル・配信されずtext/htmlが返る。postinstallで
+ * public/へコピーした同梱Workerを直接指定して回避する。
+ */
+setWorkerUrl("/maplibre-gl-worker.mjs");
 
 type GeoJsonPosition = [number, number];
 
