@@ -131,6 +131,7 @@ export default function JourneyMapPage() {
       center: DEFAULT_CENTER,
       zoom: 11,
     });
+    (window as typeof window & { _map?: MapLibreMap })._map = map;
 
     map.on("load", () => {
       map.addSource("gps-track", { type: "geojson", data: data.gpsTrack });
@@ -180,6 +181,21 @@ export default function JourneyMapPage() {
           ],
         },
       });
+      // 可視の線・円は細くクリックしづらいため、当たり判定専用の透明なレイヤーを重ねる。
+      map.addLayer({
+        id: "segments-line-hitarea",
+        type: "line",
+        source: "segments",
+        filter: ["==", ["geometry-type"], "LineString"],
+        paint: { "line-width": 20, "line-opacity": 0 },
+      });
+      map.addLayer({
+        id: "segments-point-hitarea",
+        type: "circle",
+        source: "segments",
+        filter: ["==", ["geometry-type"], "Point"],
+        paint: { "circle-radius": 14, "circle-opacity": 0 },
+      });
 
       const bounds = new LngLatBounds();
       let hasPoint = false;
@@ -199,7 +215,7 @@ export default function JourneyMapPage() {
         map.fitBounds(bounds, { padding: 32, maxZoom: 17, duration: 0 });
       }
 
-      const segmentLayers = ["segments-line", "segments-point"];
+      const segmentLayers = ["segments-line-hitarea", "segments-point-hitarea"];
       for (const layerId of segmentLayers) {
         map.on("click", layerId, (event) => {
           const feature = event.features?.[0];
@@ -224,7 +240,10 @@ export default function JourneyMapPage() {
       }
     });
 
-    return () => map.remove();
+    return () => {
+      delete (window as typeof window & { _map?: MapLibreMap })._map;
+      map.remove();
+    };
   }, [data]);
 
   return (
