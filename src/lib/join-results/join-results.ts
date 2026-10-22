@@ -38,6 +38,18 @@ function mapRow(row: JoinResultRow): JoinResult {
   };
 }
 
+export async function listJoinResultsByJoinRunId(
+  client: SupabaseClient,
+  joinRunId: string,
+): Promise<JoinResult[]> {
+  const { data, error } = await client
+    .from("join_results")
+    .select()
+    .eq("join_run_id", joinRunId);
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
+}
+
 /**
  * 1回のjoin runに属する全行をまとめて挿入する。join_run_idは常に新規runのIDのため、
  * (join_run_id, listening_event_id)の衝突は発生せず、常に通常のinsertでよい。
