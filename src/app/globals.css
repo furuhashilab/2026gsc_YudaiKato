@@ -39,6 +39,7 @@ th { background: #eef1f5; }
 .event-geolocation_error td { color: #9f1515; background: #ffe8e8; }
 @keyframes recording-pulse { 70% { box-shadow: 0 0 0 8px rgb(213 37 37 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(213 37 37 / 0%); } }
 @media (prefers-reduced-motion: reduce) { .is-recording .recording-indicator { animation: none; } }
+.journey-recorder section { margin-top: 28px; }
 .dev-links { display: grid; gap: 10px; width: min(420px, 100%); margin-top: 24px; }
 .dev-links a { padding: 14px 16px; color: #172033; background: white; border: 1px solid #dde1e7; border-radius: 8px; text-decoration: none; }
 .dev-links a:hover { border-color: #b90000; color: #8c1010; }
