@@ -64,14 +64,15 @@ export async function POST(
 
     const scrobbles = listeningEvents.map(toTimelineScrobble);
     const timelineLocationSamples = locationSamples.map(toTimelineLocationSample);
-    const results = joinScrobblesWithLocations(scrobbles, timelineLocationSamples);
+    const config = { ...DEFAULT_JOIN_ALGORITHM_CONFIG };
+    const results = joinScrobblesWithLocations(scrobbles, timelineLocationSamples, config);
 
     const joinRun = await createJoinRunWithResults(
       db,
       {
         journeyId: journey.id,
         algorithmVersion: DEFAULT_JOIN_ALGORITHM_VERSION,
-        algorithmConfig: DEFAULT_JOIN_ALGORITHM_CONFIG,
+        algorithmConfig: config,
       },
       results.map((result) => ({
         listeningEventId: result.eventId,

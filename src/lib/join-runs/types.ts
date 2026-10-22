@@ -1,20 +1,13 @@
-export type JoinAlgorithmConfig = {
-  maxGapMs: number;
-  representativeMethod: string;
-  intervalRule: string;
-};
+import { DEFAULT_TIMELINE_JOIN_CONFIG } from "../timeline-join/join-timeline.ts";
+import type { TimelineJoinConfig } from "../timeline-join/types.ts";
+
+export type JoinAlgorithmConfig = TimelineJoinConfig;
 
 export const DEFAULT_JOIN_ALGORITHM_VERSION = "v0.1";
 
-/**
- * joinScrobblesWithLocations()への実引数(DEFAULT_TIMELINE_JOIN_CONFIG)とは別物。
- * アルゴリズムの挙動を研究記録として要約した、保存専用のメタデータ。
- */
-export const DEFAULT_JOIN_ALGORITHM_CONFIG: JoinAlgorithmConfig = {
-  maxGapMs: 30_000,
-  representativeMethod: "nearest_midpoint",
-  intervalRule: "half-open",
-};
+/** 結合処理に実際に渡す設定値を、そのまま保存する。 */
+export const DEFAULT_JOIN_ALGORITHM_CONFIG: JoinAlgorithmConfig =
+  DEFAULT_TIMELINE_JOIN_CONFIG;
 
 export type JoinRun = {
   id: string;
