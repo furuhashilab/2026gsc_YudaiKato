@@ -67,6 +67,22 @@ export async function getJourney(
   return data ? mapRow(data) : null;
 }
 
+/** journeys.session_idはUNIQUEのため、作成前にこれで存在確認し、再試行時の衝突エラーを避ける。 */
+export async function getJourneyBySessionId(
+  client: SupabaseClient,
+  userId: string,
+  sessionId: string,
+): Promise<Journey | null> {
+  const { data, error } = await client
+    .from("journeys")
+    .select()
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapRow(data) : null;
+}
+
 export async function listJourneys(
   client: SupabaseClient,
   userId: string,
