@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getAuthenticatedUser } from "@/lib/supabase/server-client.ts";
+import { getMusicAccount } from "@/lib/music-accounts";
+import { createSupabaseServiceRoleClient, getAuthenticatedUser } from "@/lib/supabase/server-client.ts";
 
 export type LastFmRecentTrack = {
   trackName: string;
@@ -39,12 +40,28 @@ export async function GET() {
   }
 
   const apiKey = process.env.LASTFM_API_KEY?.trim();
-  const username = process.env.LASTFM_USERNAME?.trim();
-  const missing = [!apiKey && "LASTFM_API_KEY", !username && "LASTFM_USERNAME"].filter(Boolean);
-
-  if (!apiKey || !username) {
+  if (!apiKey) {
     return NextResponse.json(
-      { error: `環境変数 ${missing.join(", ")} が設定されていません。` },
+      { error: "環境変数 LASTFM_API_KEY が設定されていません。" },
+      { status: 500 },
+    );
+  }
+
+  const db = createSupabaseServiceRoleClient();
+  let username: string;
+  try {
+    const musicAccount = await getMusicAccount(db, user.id);
+    if (!musicAccount) {
+      return NextResponse.json(
+        { error: "Last.fmユーザー名が登録されていません。/settings/music から登録してください。" },
+        { status: 409 },
+      );
+    }
+    username = musicAccount.lastfmUsername;
+  } catch (cause) {
+    console.error("Failed to get music account", cause);
+    return NextResponse.json(
+      { error: "Last.fmアカウント情報の取得に失敗しました。" },
       { status: 500 },
     );
   }

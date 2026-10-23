@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createJourney, listJourneys } from "@/lib/journeys";
+import { createJourney, getJourneyBySessionId, listJourneys } from "@/lib/journeys";
 import { getRecordingSession } from "@/lib/recording-sessions";
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from "@/lib/supabase/server-client.ts";
 
@@ -42,6 +42,12 @@ export async function POST(request: Request) {
     const recordingSession = await getRecordingSession(db, user.id, body.sessionId);
     if (!recordingSession) {
       return NextResponse.json({ error: "Recording Sessionが見つかりません。" }, { status: 404 });
+    }
+
+    // 同一sessionIdでの再試行（復旧操作など）がUNIQUE制約違反にならないよう、既存Journeyがあればそれを返す。
+    const existingJourney = await getJourneyBySessionId(db, user.id, recordingSession.id);
+    if (existingJourney) {
+      return NextResponse.json({ journey: existingJourney }, { status: 200 });
     }
 
     const journey = await createJourney(db, {

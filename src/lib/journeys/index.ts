@@ -1,4 +1,9 @@
-export { createJourney, getJourney, listJourneys } from "./journeys.ts";
+export {
+  createJourney,
+  getJourney,
+  getJourneyBySessionId,
+  listJourneys,
+} from "./journeys.ts";
 export type {
   CreateJourneyInput,
   Journey,

@@ -6,10 +6,11 @@
 
 ```env
 LASTFM_API_KEY=Last.fmで発行したAPIキー
-LASTFM_USERNAME=検証対象のLast.fmユーザー名
 ```
 
-APIキーは [Last.fm API account](https://www.last.fm/api/account/create) で発行する。キーとユーザー名はサーバー側だけで利用し、APIレスポンスやブラウザーのログには含めない。
+APIキーは [Last.fm API account](https://www.last.fm/api/account/create) で発行する。APIレスポンスやブラウザーのログには含めない。
+
+検証対象のLast.fmユーザー名は環境変数ではなく、`/settings/music` からログインユーザー自身の `music_accounts` へ登録する。未登録の場合、検証ページのAPI呼び出しは409エラーになる。
 
 ```bash
 pnpm install
