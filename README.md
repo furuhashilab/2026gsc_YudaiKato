@@ -388,7 +388,7 @@ Last.fmの同一Scrobbleを重複保存しないため、`listening_events.exter
 
 # 3. Results
 
-## 3.1 現時点の進捗（2026年9月）
+## 3.1 現時点の進捗（2026年10月）
 
 2026年8月の構想発表以降、時系列結合ロジックの残課題を修正し、Supabaseによる永続化・ユーザー認証・位置ログ保存API・Last.fm Scrobble保存APIを実装した。
 
