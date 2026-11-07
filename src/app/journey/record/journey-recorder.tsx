@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client.ts";
 
 type Phase = "idle" | "recording" | "finishing" | "error";
+type WakeLockStatus = "idle" | "active" | "unavailable";
 
 type PendingLocationSample = {
   sampleId: string;
@@ -96,6 +97,7 @@ export function JourneyRecorder() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wakeLockStatus, setWakeLockStatus] = useState<WakeLockStatus>("idle");
 
   const watchIdRef = useRef<number | null>(null);
   const watchGenerationRef = useRef(0);
@@ -105,6 +107,7 @@ export function JourneyRecorder() {
   const flushingRef = useRef(false);
   const batchTimerRef = useRef<number | null>(null);
   const lastReceivedAtRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -134,6 +137,37 @@ export function JourneyRecorder() {
     if (batchTimerRef.current !== null) {
       window.clearInterval(batchTimerRef.current);
       batchTimerRef.current = null;
+    }
+  }, []);
+
+  // Screen Wake Lockは記録中の画面消灯を防ぐためのベストエフォートな機能であり、
+  // 非対応ブラウザや取得失敗時も記録自体は継続させる（失敗を握りつぶして状態表示のみ更新する）。
+  const requestWakeLock = useCallback(async () => {
+    if (!("wakeLock" in navigator)) {
+      setWakeLockStatus("unavailable");
+      return;
+    }
+    try {
+      const sentinel = await navigator.wakeLock.request("screen");
+      wakeLockRef.current = sentinel;
+      setWakeLockStatus("active");
+      sentinel.addEventListener("release", () => {
+        wakeLockRef.current = null;
+        // 明示的なreleaseWakeLock()呼び出し後はすでに"idle"になっているため上書きしない。
+        setWakeLockStatus((previous) => (previous === "active" ? "unavailable" : previous));
+      });
+    } catch {
+      wakeLockRef.current = null;
+      setWakeLockStatus("unavailable");
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    const sentinel = wakeLockRef.current;
+    wakeLockRef.current = null;
+    setWakeLockStatus("idle");
+    if (sentinel) {
+      void sentinel.release().catch(() => {});
     }
   }, []);
 
@@ -235,6 +269,10 @@ export function JourneyRecorder() {
     bufferRef.current = [];
     lastReceivedAtRef.current = null;
 
+    // ユーザー操作（クリック）の文脈を保つため、fetchの前・awaitせずに要求する
+    // （iOS Safariはユーザー操作から離れたタイミングでの取得を拒否する場合がある）。
+    void requestWakeLock();
+
     try {
       const { recordingSession } = await requestJson<RecordingSessionResponse>(
         "/api/recording-sessions",
@@ -255,10 +293,11 @@ export function JourneyRecorder() {
       );
       startBatchTimer();
     } catch (cause) {
+      releaseWakeLock();
       setError(cause instanceof Error ? cause.message : "Recording Sessionの作成に失敗しました。");
       setPhase("error");
     }
-  }, [user, handleGeolocationError, handlePosition, startBatchTimer]);
+  }, [user, handleGeolocationError, handlePosition, startBatchTimer, requestWakeLock, releaseWakeLock]);
 
   // finishRecordingはエラー後に同じsessionIdで再試行できるよう設計する。
   // PATCH（終了）・POST /api/journeys はどちらも再実行してよい（終了済みは無害、Journey作成は冪等）。
@@ -271,6 +310,7 @@ export function JourneyRecorder() {
       stopGpsWatch();
       stopBatchTimer();
     }
+    releaseWakeLock();
     setError(null);
     setPhase("finishing");
 
@@ -301,7 +341,7 @@ export function JourneyRecorder() {
       setError(cause instanceof Error ? cause.message : "予期しないエラーが発生しました。");
       setPhase("error");
     }
-  }, [router, stopGpsWatch, stopBatchTimer]);
+  }, [router, stopGpsWatch, stopBatchTimer, releaseWakeLock]);
 
   useEffect(() => {
     if (phase !== "recording") return;
@@ -313,12 +353,27 @@ export function JourneyRecorder() {
     };
   }, [phase]);
 
+  // Wake Lockはページが非表示になると自動解除されるため、記録中に再表示されたら再取得する。
+  useEffect(() => {
+    if (phase !== "recording") return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && recordingRef.current && wakeLockRef.current === null) {
+        void requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [phase, requestWakeLock]);
+
   useEffect(() => {
     return () => {
       stopGpsWatch();
       stopBatchTimer();
+      releaseWakeLock();
     };
-  }, [stopGpsWatch, stopBatchTimer]);
+  }, [stopGpsWatch, stopBatchTimer, releaseWakeLock]);
 
   const recording = phase === "recording";
   const canStart = phase === "idle";
@@ -348,6 +403,10 @@ export function JourneyRecorder() {
       </div>
 
       {phase === "finishing" && <p className="notice">記録を保存しています…</p>}
+      {recording && wakeLockStatus === "active" && <p className="notice">画面の自動消灯を防止中</p>}
+      {recording && wakeLockStatus === "unavailable" && (
+        <p className="notice">画面が消えると位置が記録されない場合があります。画面を点けたままにしてください。</p>
+      )}
       {gpsError && <p className="error" role="alert"><strong>Geolocationエラー:</strong> {gpsError}</p>}
       {uploadWarning && <p className="notice">{uploadWarning}</p>}
       {error && <p className="error" role="alert"><strong>エラー:</strong> {error}</p>}
