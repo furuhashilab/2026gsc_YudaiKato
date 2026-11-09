@@ -85,3 +85,17 @@ export async function listConfirmedListeningEventsWithTrack(
   if (error) throw error;
   return (data ?? []).map(mapRowWithTrack);
 }
+
+/** 一覧表示など件数だけ必要な場合向け。トラック結合やソートをしないため軽量。 */
+export async function countConfirmedListeningEventsBySession(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("listening_events")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .eq("status", "confirmed");
+  if (error) throw error;
+  return count ?? 0;
+}

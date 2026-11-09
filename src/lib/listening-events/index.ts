@@ -1,4 +1,5 @@
 export {
+  countConfirmedListeningEventsBySession,
   createListeningEvents,
   listConfirmedListeningEventsWithTrack,
 } from "./listening-events.ts";

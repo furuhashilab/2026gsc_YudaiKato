@@ -53,6 +53,19 @@ export async function listLocationSamplesBySession(
   return (data ?? []).map(mapRow);
 }
 
+/** 一覧表示など件数だけ必要な場合向け。行本体を取得しないため大量サンプルでも軽量。 */
+export async function countLocationSamplesBySession(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("location_samples")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function createLocationSamples(
   client: SupabaseClient,
   sessionId: string,

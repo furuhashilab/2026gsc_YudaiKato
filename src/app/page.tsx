@@ -5,6 +5,11 @@ export default function Home() {
     <main>
       <h1>Music Walk Map</h1>
       <p>卒業論文版の技術検証ページです。</p>
+      <nav className="primary-links" aria-label="Journey記録">
+        <Link href="/journey/record">Journeyを記録する</Link>
+        <Link href="/journey">Journey一覧</Link>
+        <Link href="/settings/music">Last.fm設定</Link>
+      </nav>
       <nav className="dev-links" aria-label="技術検証ページ">
         <Link href="/dev/lastfm-test">Last.fm取得検証</Link>
         <Link href="/dev/location-test">位置情報取得検証</Link>

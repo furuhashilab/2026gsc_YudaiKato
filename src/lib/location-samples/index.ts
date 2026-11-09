@@ -1,4 +1,5 @@
 export {
+  countLocationSamplesBySession,
   createLocationSamples,
   listLocationSamplesBySession,
 } from "./location-samples.ts";
