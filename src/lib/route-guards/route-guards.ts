@@ -23,12 +23,22 @@ export async function requireConsentedUser(): Promise<User> {
   return user;
 }
 
-/** Journey関連画面向け。ログイン・研究同意・Last.fm連携の3条件を順に確認する。 */
+/**
+ * Journey関連画面向け。ログイン・研究同意・Last.fm連携の3条件を順に確認する。
+ * 認証確認（ネットワーク往復を伴う）は1回のみ行い、互いに依存しない同意確認・
+ * Last.fm連携確認はPromise.allで並列に問い合わせる。ただしリダイレクトの優先順位
+ * （未ログイン→/auth、同意未完了→/consent、Last.fm未登録→/settings/music）は、
+ * 判定の順序をそのままにすることで並列化前と変えない。
+ */
 export async function requireJourneyReadyUser(): Promise<User> {
-  const user = await requireConsentedUser();
+  const user = await requireAuthenticatedUser();
 
   const db = createSupabaseServiceRoleClient();
-  const musicAccount = await getMusicAccount(db, user.id);
+  const [consent, musicAccount] = await Promise.all([
+    getResearchConsent(db, user.id),
+    getMusicAccount(db, user.id),
+  ]);
+  if (!consent?.consented) redirect("/consent");
   if (!musicAccount) redirect("/settings/music");
 
   return user;
